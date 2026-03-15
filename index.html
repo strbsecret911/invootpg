@@ -1,261 +1,564 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TOPUPGRAM Invoice</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TOPUPGRAM Invoice</title>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
 
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f3f4f6;
+      color: #111827;
+      padding: 24px;
+    }
 
-<style>
-body{
-font-family:Arial, Helvetica, sans-serif;
-background:#f3f4f6;
-margin:0;
-padding:40px;
-}
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+    }
 
-.container{
-max-width:900px;
-margin:auto;
-}
+    .topbar {
+      background: #fff;
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+      margin-bottom: 20px;
+    }
 
-.card{
-background:white;
-border-radius:16px;
-padding:24px;
-margin-bottom:20px;
-box-shadow:0 4px 14px rgba(0,0,0,0.06);
-}
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
 
-.title{
-font-weight:bold;
-font-size:18px;
-margin-bottom:14px;
-display:flex;
-justify-content:space-between;
-align-items:center;
-}
+    .muted {
+      color: #6b7280;
+      font-size: 14px;
+      line-height: 1.5;
+    }
 
-.status{
-background:#22c55e;
-color:white;
-padding:6px 14px;
-border-radius:20px;
-font-size:13px;
-}
+    textarea {
+      width: 100%;
+      min-height: 90px;
+      resize: vertical;
+      margin-top: 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 14px;
+      outline: none;
+    }
 
-.row{
-display:flex;
-justify-content:space-between;
-padding:12px 0;
-border-top:1px solid #eee;
-}
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
 
-.row:first-child{
-border-top:none;
-}
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 16px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 14px;
+    }
 
-.label{
-color:#6b7280;
-}
+    .btn-dark {
+      background: #111827;
+      color: #fff;
+    }
 
-.value{
-font-weight:600;
-}
+    .btn-light {
+      background: #e5e7eb;
+      color: #111827;
+    }
 
-.note{
-background:#f9fafb;
-padding:16px;
-border-radius:10px;
-display:flex;
-justify-content:space-between;
-align-items:center;
-}
+    .status-box {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      display: none;
+    }
 
-button{
-border:none;
-padding:10px 14px;
-border-radius:8px;
-cursor:pointer;
-background:#111827;
-color:white;
-}
+    .status-loading {
+      display: block;
+      background: #fef3c7;
+      color: #92400e;
+    }
 
-.tools{
-margin-bottom:20px;
-display:flex;
-gap:10px;
-}
+    .status-success {
+      display: block;
+      background: #d1fae5;
+      color: #065f46;
+    }
 
-textarea{
-width:100%;
-padding:12px;
-border-radius:10px;
-border:1px solid #ccc;
-margin-bottom:10px;
-}
+    .status-error {
+      display: block;
+      background: #fee2e2;
+      color: #991b1b;
+    }
 
-</style>
+    .invoice {
+      background: transparent;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 18px;
+      padding: 22px;
+      margin-bottom: 18px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+    }
+
+    .card-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 120px;
+      padding: 9px 16px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .pill-success {
+      background: #34d399;
+      color: #052e2b;
+    }
+
+    .pill-pending {
+      background: #fde68a;
+      color: #78350f;
+    }
+
+    .pill-failed {
+      background: #fecaca;
+      color: #7f1d1d;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 220px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px 0;
+      border-top: 1px solid #ececec;
+    }
+
+    .row:first-of-type {
+      border-top: 0;
+    }
+
+    .label {
+      color: #6b7280;
+      font-size: 15px;
+    }
+
+    .value {
+      text-align: right;
+      font-weight: 700;
+      font-size: 17px;
+      word-break: break-word;
+    }
+
+    .copy-btn {
+      border: 2px solid #d1d5db;
+      background: #fff;
+      color: #111827;
+      width: 48px;
+      height: 42px;
+      border-radius: 10px;
+      padding: 0;
+      font-size: 18px;
+    }
+
+    .note-box {
+      background: #f9fafb;
+      border: 1px solid #ececec;
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .note-text {
+      font-size: 17px;
+      line-height: 1.5;
+      word-break: break-word;
+      white-space: pre-wrap;
+      flex: 1;
+    }
+
+    .footer-note {
+      text-align: center;
+      color: #6b7280;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+
+    @media (max-width: 720px) {
+      body { padding: 12px; }
+
+      .row {
+        grid-template-columns: 1fr;
+      }
+
+      .value {
+        text-align: left;
+      }
+
+      .copy-btn {
+        width: 100%;
+      }
+
+      .note-box {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .card-title {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .pill {
+        width: 100%;
+      }
+    }
+  </style>
 </head>
-
 <body>
+  <div class="wrap">
+    <div class="topbar">
+      <h1>TOPUPGRAM</h1>
+      <div class="muted">
+        Tempel link atau nomor invoice PojokTopup. Harga supplier tidak akan ditampilkan.
+      </div>
 
-<div class="container">
+      <textarea id="invoiceInput" placeholder="Contoh:
+https://www.pojoktopup.id/id-id/invoices/PTO5551325383636D62605164
+atau
+PTO5551325383636D62605164"></textarea>
 
-<h2>TOPUPGRAM Invoice Generator</h2>
+      <div class="actions">
+        <button class="btn-dark" onclick="fetchInvoice()">Ambil Data</button>
+        <button class="btn-light" onclick="downloadJPG()">Download JPG</button>
+      </div>
 
-<textarea id="invoiceInput" placeholder="Masukkan link atau kode invoice pojoktopup"></textarea>
+      <div id="fetchStatus" class="status-box"></div>
+    </div>
 
-<div class="tools">
-<button onclick="fetchInvoice()">Ambil Data</button>
-<button onclick="downloadImage()">Download JPG</button>
-</div>
+    <div id="invoiceCapture" class="invoice">
+      <div class="card">
+        <div class="card-title">
+          <span>📊 Status Transaksi</span>
+          <span id="statusBadge" class="pill pill-success">SUCCESS</span>
+        </div>
 
-<div id="invoice">
+        <div class="row">
+          <div class="label">Invoice</div>
+          <div class="value" id="invoiceNumber">-</div>
+          <button class="copy-btn" onclick="copyField('invoiceNumber')">📋</button>
+        </div>
 
-<div class="card">
+        <div class="row">
+          <div class="label">Waktu Transaksi</div>
+          <div class="value" id="transactionTime">-</div>
+          <div></div>
+        </div>
+      </div>
 
-<div class="title">
-<div>📊 Status Transaksi</div>
-<div class="status" id="status">SUCCESS</div>
-</div>
+      <div class="card">
+        <div class="card-title">
+          <span>🎮 Detail Produk</span>
+        </div>
 
-<div class="row">
-<div class="label">Invoice</div>
-<div class="value" id="invoiceNumber">-</div>
-</div>
+        <div class="row">
+          <div class="label">Produk</div>
+          <div class="value" id="productName">-</div>
+          <div></div>
+        </div>
 
-<div class="row">
-<div class="label">Waktu Transaksi</div>
-<div class="value" id="time">-</div>
-</div>
+        <div class="row">
+          <div class="label">Nominal</div>
+          <div class="value" id="productNominal">-</div>
+          <div></div>
+        </div>
 
-</div>
+        <div class="row">
+          <div class="label">User ID / Tujuan</div>
+          <div class="value" id="userTarget">-</div>
+          <div></div>
+        </div>
 
+        <div class="row">
+          <div class="label">Nickname / Nama</div>
+          <div class="value" id="nickname">-</div>
+          <div></div>
+        </div>
 
-<div class="card">
+        <div class="row">
+          <div class="label">Jumlah</div>
+          <div class="value" id="quantity">1</div>
+          <div></div>
+        </div>
+      </div>
 
-<div class="title">🎮 Detail Produk</div>
+      <div class="card">
+        <div class="card-title">
+          <span>🪪 SN / Keterangan</span>
+        </div>
 
-<div class="row">
-<div class="label">Produk</div>
-<div class="value" id="product">-</div>
-</div>
+        <div class="note-box">
+          <div id="snText" class="note-text">-</div>
+          <button class="btn-light" onclick="copyField('snText')">Salin</button>
+        </div>
+      </div>
 
-<div class="row">
-<div class="label">Nominal</div>
-<div class="value" id="nominal">-</div>
-</div>
+      <div class="footer-note">
+        Invoice ini dibuat otomatis oleh TOPUPGRAM.
+      </div>
+    </div>
+  </div>
 
-<div class="row">
-<div class="label">User ID / Tujuan</div>
-<div class="value" id="userid">-</div>
-</div>
+  <script>
+    function setStatusMessage(type, text) {
+      const box = document.getElementById('fetchStatus');
+      box.className = 'status-box';
+      if (type === 'loading') box.classList.add('status-loading');
+      if (type === 'success') box.classList.add('status-success');
+      if (type === 'error') box.classList.add('status-error');
+      box.textContent = text;
+    }
 
-<div class="row">
-<div class="label">Nickname / Nama</div>
-<div class="value" id="nickname">-</div>
-</div>
+    function copyField(id) {
+      const text = document.getElementById(id).textContent.trim();
+      navigator.clipboard.writeText(text)
+        .then(() => alert('Berhasil disalin'))
+        .catch(() => alert('Gagal menyalin'));
+    }
 
-<div class="row">
-<div class="label">Jumlah</div>
-<div class="value" id="jumlah">1</div>
-</div>
+    function extractInvoiceCode(input) {
+      const raw = (input || '').trim();
+      if (!raw) return '';
+      const match = raw.match(/\/invoices\/([^\/?#\s]+)/i);
+      return match ? match[1] : raw;
+    }
 
-</div>
+    function cleanText(text) {
+      return (text || '')
+        .replace(/\u00A0/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
 
+    function setBadge(status) {
+      const badge = document.getElementById('statusBadge');
+      const s = (status || 'SUCCESS').toUpperCase();
 
-<div class="card">
+      badge.textContent = s;
+      badge.className = 'pill';
 
-<div class="title">🪪 SN / Keterangan</div>
+      if (s.includes('SUCCESS') || s.includes('SELESAI') || s.includes('SUKSES')) {
+        badge.classList.add('pill-success');
+      } else if (s.includes('PENDING') || s.includes('MENUNGGU')) {
+        badge.classList.add('pill-pending');
+      } else {
+        badge.classList.add('pill-failed');
+      }
+    }
 
-<div class="note">
-<div id="sn">-</div>
-<button onclick="copySN()">Salin</button>
-</div>
+    function updateSN() {
+      const status = document.getElementById('statusBadge').textContent.trim();
+      const nick = document.getElementById('nickname').textContent.trim();
+      const invoice = document.getElementById('invoiceNumber').textContent.trim();
+      const time = document.getElementById('transactionTime').textContent.trim();
 
-</div>
+      const statusText = status === 'SUCCESS' ? 'Sukses' : status;
+      document.getElementById('snText').textContent =
+        `${statusText} / ${nick} / ${invoice} / ${time}`;
+    }
 
-</div>
+    function setInvoiceData(data) {
+      document.getElementById('invoiceNumber').textContent = data.invoice || '-';
+      document.getElementById('transactionTime').textContent = data.time || '-';
+      document.getElementById('productName').textContent = data.product || '-';
+      document.getElementById('productNominal').textContent = data.nominal || '-';
+      document.getElementById('userTarget').textContent = data.userTarget || '-';
+      document.getElementById('nickname').textContent = data.nickname || '-';
+      document.getElementById('quantity').textContent = data.quantity || '1';
+      setBadge(data.status || 'SUCCESS');
+      updateSN();
+    }
 
-</div>
+    function parseHTMLDocument(html, invoiceCode) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
 
-<script>
+      const allText = cleanText(doc.body ? doc.body.innerText : '');
+      const lines = (doc.body ? doc.body.innerText : '')
+        .split('\n')
+        .map(v => cleanText(v))
+        .filter(Boolean);
 
-function copySN(){
-let text=document.getElementById("sn").innerText
-navigator.clipboard.writeText(text)
-alert("Disalin")
-}
+      function nextAfterLabel(label) {
+        const idx = lines.findIndex(v => v.toLowerCase() === label.toLowerCase());
+        if (idx === -1) return '';
+        for (let i = idx + 1; i < lines.length; i++) {
+          const candidate = cleanText(lines[i]);
+          if (!candidate) continue;
+          if (candidate === ':') continue;
+          if (candidate.startsWith(': ')) return candidate.slice(2).trim();
+          if (candidate.startsWith(':')) return candidate.slice(1).trim();
+          return candidate;
+        }
+        return '';
+      }
 
-async function fetchInvoice(){
+      function findDateTime() {
+        const m = allText.match(/\b\d{1,2}\s+[A-Za-z]{3}\s+\d{4}\s+\d{2}:\d{2}:\d{2}\b/);
+        return m ? m[0] : '';
+      }
 
-let input=document.getElementById("invoiceInput").value
+      function findProduct() {
+        const headings = Array.from(doc.querySelectorAll('h1,h2,h3,h4'));
+        for (const h of headings) {
+          const t = cleanText(h.textContent);
+          if (!t) continue;
+          if (/pesanan selesai|progress transaksi|rincian pembayaran|informasi akun|metode pembayaran|nomor invoice|status pembayaran|status transaksi|pesan/i.test(t)) {
+            continue;
+          }
+          return t;
+        }
+        return '';
+      }
 
-let code=input.split("/").pop()
+      function findNominal() {
+        const candidates = lines.filter(v =>
+          /diamond|diamonds|dm|robux|uc|cp|token|express supply pass|welkin|voucher|membership|weekly|monthly|star rail|genshin/i.test(v)
+        );
+        return candidates[0] || '';
+      }
 
-let url="https://api.allorigins.win/raw?url=https://www.pojoktopup.id/id-id/invoices/"+code
+      function normalizeStatus() {
+        const st = nextAfterLabel('Status Transaksi') || nextAfterLabel('Status Pembayaran') || '';
+        if (!st) {
+          if (/pesanan selesai/i.test(allText)) return 'SUCCESS';
+          return 'SUCCESS';
+        }
+        return st.toUpperCase();
+      }
 
-let res=await fetch(url)
-let html=await res.text()
+      const idValue = nextAfterLabel('ID');
+      const serverValue = nextAfterLabel('Server');
+      const userTarget = [idValue, serverValue].filter(Boolean).join(' | ') || idValue || '-';
 
-let parser=new DOMParser()
-let doc=parser.parseFromString(html,"text/html")
+      return {
+        invoice: invoiceCode || nextAfterLabel('Nomor Invoice') || '-',
+        time: findDateTime() || '-',
+        product: findProduct() || '-',
+        nominal: nextAfterLabel('Nominal') || findNominal() || '-',
+        userTarget,
+        nickname: nextAfterLabel('Nickname') || '-',
+        quantity: (nextAfterLabel('Jumlah') || '1').replace(/\s*x$/i, '').trim() || '1',
+        status: normalizeStatus()
+      };
+    }
 
-function get(label){
+    async function fetchFromProxy(invoiceCode) {
+      const targetUrl = `https://www.pojoktopup.id/id-id/invoices/${invoiceCode}`;
+      const proxies = [
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+        `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`
+      ];
 
-let el=[...doc.querySelectorAll("*")].find(e=>e.textContent.trim()==label)
+      let lastError = null;
 
-if(!el)return "-"
+      for (const proxyUrl of proxies) {
+        try {
+          const res = await fetch(proxyUrl);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-let val=el.parentElement.querySelectorAll("*")[1]
+          let html = '';
+          if (proxyUrl.includes('/get?')) {
+            const json = await res.json();
+            html = json.contents || '';
+          } else {
+            html = await res.text();
+          }
 
-return val?val.textContent.trim():"-"
+          if (!html || html.length < 100) {
+            throw new Error('Konten kosong');
+          }
 
-}
+          return html;
+        } catch (err) {
+          lastError = err;
+        }
+      }
 
-let invoice=code
+      throw lastError || new Error('Gagal mengambil data');
+    }
 
-let time=get("Waktu Transaksi")
+    async function fetchInvoice() {
+      const input = document.getElementById('invoiceInput').value;
+      const invoiceCode = extractInvoiceCode(input);
 
-let produk=get("Produk")
+      if (!invoiceCode) {
+        setStatusMessage('error', 'Masukkan link atau nomor invoice dulu.');
+        return;
+      }
 
-let nominal=get("Nominal")
+      try {
+        setStatusMessage('loading', 'Sedang mengambil data invoice...');
+        const html = await fetchFromProxy(invoiceCode);
+        const data = parseHTMLDocument(html, invoiceCode);
 
-let userid=get("User ID / Tujuan")
+        if (!data.product || data.product === '-') {
+          throw new Error('Data produk tidak terbaca');
+        }
 
-let nickname=get("Nickname / Nama")
+        setInvoiceData(data);
+        setStatusMessage('success', 'Berhasil mengambil data invoice.');
+      } catch (err) {
+        console.error(err);
+        setStatusMessage('error', 'Gagal mengambil data invoice. Kemungkinan proxy/CORS sedang diblokir atau struktur halaman berubah.');
+      }
+    }
 
-document.getElementById("invoiceNumber").innerText=invoice
-document.getElementById("time").innerText=time
-document.getElementById("product").innerText=produk
-document.getElementById("nominal").innerText=nominal
-document.getElementById("userid").innerText=userid
-document.getElementById("nickname").innerText=nickname
+    async function downloadJPG() {
+      const node = document.getElementById('invoiceCapture');
+      const canvas = await html2canvas(node, {
+        backgroundColor: '#f3f4f6',
+        scale: 2
+      });
 
-document.getElementById("sn").innerText=
-"Sukses / "+nickname+" / "+invoice+" / "+time
-
-}
-
-function downloadImage(){
-
-html2canvas(document.querySelector("#invoice")).then(canvas=>{
-
-let link=document.createElement("a")
-
-link.download="invoice_topupgram.jpg"
-
-link.href=canvas.toDataURL("image/jpeg")
-
-link.click()
-
-})
-
-}
-
-</script>
-
+      const link = document.createElement('a');
+      const invoice = document.getElementById('invoiceNumber').textContent.trim() || 'invoice';
+      link.download = `${invoice}_topupgram.jpg`;
+      link.href = canvas.toDataURL('image/jpeg', 0.95);
+      link.click();
+    }
+  </script>
 </body>
 </html>
