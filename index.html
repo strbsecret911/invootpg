@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TOPUPGRAM Invoice</title>
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+body{
+font-family:Arial, Helvetica, sans-serif;
+background:#f3f4f6;
+margin:0;
+padding:40px;
+}
+
+.container{
+max-width:900px;
+margin:auto;
+}
+
+.card{
+background:white;
+border-radius:16px;
+padding:24px;
+margin-bottom:20px;
+box-shadow:0 4px 14px rgba(0,0,0,0.06);
+}
+
+.title{
+font-weight:bold;
+font-size:18px;
+margin-bottom:14px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.status{
+background:#22c55e;
+color:white;
+padding:6px 14px;
+border-radius:20px;
+font-size:13px;
+}
+
+.row{
+display:flex;
+justify-content:space-between;
+padding:12px 0;
+border-top:1px solid #eee;
+}
+
+.row:first-child{
+border-top:none;
+}
+
+.label{
+color:#6b7280;
+}
+
+.value{
+font-weight:600;
+}
+
+.note{
+background:#f9fafb;
+padding:16px;
+border-radius:10px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+button{
+border:none;
+padding:10px 14px;
+border-radius:8px;
+cursor:pointer;
+background:#111827;
+color:white;
+}
+
+.tools{
+margin-bottom:20px;
+display:flex;
+gap:10px;
+}
+
+textarea{
+width:100%;
+padding:12px;
+border-radius:10px;
+border:1px solid #ccc;
+margin-bottom:10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>TOPUPGRAM Invoice Generator</h2>
+
+<textarea id="invoiceInput" placeholder="Masukkan link atau kode invoice pojoktopup"></textarea>
+
+<div class="tools">
+<button onclick="fetchInvoice()">Ambil Data</button>
+<button onclick="downloadImage()">Download JPG</button>
+</div>
+
+<div id="invoice">
+
+<div class="card">
+
+<div class="title">
+<div>📊 Status Transaksi</div>
+<div class="status" id="status">SUCCESS</div>
+</div>
+
+<div class="row">
+<div class="label">Invoice</div>
+<div class="value" id="invoiceNumber">-</div>
+</div>
+
+<div class="row">
+<div class="label">Waktu Transaksi</div>
+<div class="value" id="time">-</div>
+</div>
+
+</div>
+
+
+<div class="card">
+
+<div class="title">🎮 Detail Produk</div>
+
+<div class="row">
+<div class="label">Produk</div>
+<div class="value" id="product">-</div>
+</div>
+
+<div class="row">
+<div class="label">Nominal</div>
+<div class="value" id="nominal">-</div>
+</div>
+
+<div class="row">
+<div class="label">User ID / Tujuan</div>
+<div class="value" id="userid">-</div>
+</div>
+
+<div class="row">
+<div class="label">Nickname / Nama</div>
+<div class="value" id="nickname">-</div>
+</div>
+
+<div class="row">
+<div class="label">Jumlah</div>
+<div class="value" id="jumlah">1</div>
+</div>
+
+</div>
+
+
+<div class="card">
+
+<div class="title">🪪 SN / Keterangan</div>
+
+<div class="note">
+<div id="sn">-</div>
+<button onclick="copySN()">Salin</button>
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+function copySN(){
+let text=document.getElementById("sn").innerText
+navigator.clipboard.writeText(text)
+alert("Disalin")
+}
+
+async function fetchInvoice(){
+
+let input=document.getElementById("invoiceInput").value
+
+let code=input.split("/").pop()
+
+let url="https://api.allorigins.win/raw?url=https://www.pojoktopup.id/id-id/invoices/"+code
+
+let res=await fetch(url)
+let html=await res.text()
+
+let parser=new DOMParser()
+let doc=parser.parseFromString(html,"text/html")
+
+function get(label){
+
+let el=[...doc.querySelectorAll("*")].find(e=>e.textContent.trim()==label)
+
+if(!el)return "-"
+
+let val=el.parentElement.querySelectorAll("*")[1]
+
+return val?val.textContent.trim():"-"
+
+}
+
+let invoice=code
+
+let time=get("Waktu Transaksi")
+
+let produk=get("Produk")
+
+let nominal=get("Nominal")
+
+let userid=get("User ID / Tujuan")
+
+let nickname=get("Nickname / Nama")
+
+document.getElementById("invoiceNumber").innerText=invoice
+document.getElementById("time").innerText=time
+document.getElementById("product").innerText=produk
+document.getElementById("nominal").innerText=nominal
+document.getElementById("userid").innerText=userid
+document.getElementById("nickname").innerText=nickname
+
+document.getElementById("sn").innerText=
+"Sukses / "+nickname+" / "+invoice+" / "+time
+
+}
+
+function downloadImage(){
+
+html2canvas(document.querySelector("#invoice")).then(canvas=>{
+
+let link=document.createElement("a")
+
+link.download="invoice_topupgram.jpg"
+
+link.href=canvas.toDataURL("image/jpeg")
+
+link.click()
+
+})
+
+}
+
+</script>
+
+</body>
+</html>
