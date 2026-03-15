@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TOPUPGRAM Invoice</title>
+  <title>TOPUPGRAM Invoice Generator</title>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <style>
     * { box-sizing: border-box; }
@@ -42,7 +42,7 @@
 
     textarea {
       width: 100%;
-      min-height: 90px;
+      min-height: 220px;
       resize: vertical;
       margin-top: 14px;
       border: 1px solid #d1d5db;
@@ -50,6 +50,7 @@
       padding: 12px 14px;
       font-size: 14px;
       outline: none;
+      line-height: 1.5;
     }
 
     .actions {
@@ -252,17 +253,48 @@
     <div class="topbar">
       <h1>TOPUPGRAM</h1>
       <div class="muted">
-        Tempel link atau nomor invoice PojokTopup. Harga supplier tidak akan ditampilkan.
+        Tempel seluruh teks invoice dari PojokTopup ke kolom di bawah. Harga supplier tidak akan ditampilkan di invoice.
       </div>
 
-      <textarea id="invoiceInput" placeholder="Contoh:
-https://www.pojoktopup.id/id-id/invoices/PTO5551325383636D62605164
-atau
-PTO5551325383636D62605164"></textarea>
+      <textarea id="rawInput" placeholder="Tempel seluruh teks invoice di sini...">11 Mar 2026 19:49:43
+
+Mobile Legends
+Mobile Legends
+71 (64+7) Diamonds
+
+Informasi Akun
+Nickname
+: 07-12-97-金
+
+ID
+: 1437456352
+
+Server
+: 11651
+
+
+Rincian Pembayaran
+Total Pembayaran
+Rp 18.951
+
+
+Beli Lagi
+Metode Pembayaran
+Pojok Saldo
+Nomor Invoice
+
+PTO5551325383636D62605164
+Status Pembayaran
+Paid
+Status Transaksi
+Success
+Pesan
+Transaksi berhasil pada 2026/03/11 19:49:44 WIB</textarea>
 
       <div class="actions">
-        <button class="btn-dark" onclick="fetchInvoice()">Ambil Data</button>
+        <button class="btn-dark" onclick="parsePastedData()">Ambil Data dari Teks</button>
         <button class="btn-light" onclick="downloadJPG()">Download JPG</button>
+        <button class="btn-light" onclick="clearInput()">Reset</button>
       </div>
 
       <div id="fetchStatus" class="status-box"></div>
@@ -358,30 +390,118 @@ PTO5551325383636D62605164"></textarea>
         .catch(() => alert('Gagal menyalin'));
     }
 
-    function extractInvoiceCode(input) {
-      const raw = (input || '').trim();
-      if (!raw) return '';
-      const match = raw.match(/\/invoices\/([^\/?#\s]+)/i);
-      return match ? match[1] : raw;
-    }
-
     function cleanText(text) {
       return (text || '')
         .replace(/\u00A0/g, ' ')
-        .replace(/\s+/g, ' ')
+        .replace(/\r/g, '')
         .trim();
+    }
+
+    function splitLines(text) {
+      return cleanText(text)
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line !== '');
+    }
+
+    function getValueAfterLabel(lines, label) {
+      const idx = lines.findIndex(line => line.toLowerCase() === label.toLowerCase());
+      if (idx === -1) return '';
+
+      for (let i = idx + 1; i < lines.length; i++) {
+        let value = lines[i].trim();
+
+        if (!value) continue;
+        if (value === ':') continue;
+
+        if (value.startsWith(':')) {
+          value = value.replace(/^:\s*/, '').trim();
+        }
+
+        if (!value) continue;
+        return value;
+      }
+
+      return '';
+    }
+
+    function findFirstDateLine(lines) {
+      const regex = /^\d{1,2}\s+[A-Za-z]{3}\s+\d{4}\s+\d{2}:\d{2}:\d{2}$/;
+      return lines.find(line => regex.test(line)) || '';
+    }
+
+    function findInvoice(lines) {
+      return lines.find(line => /^PTO[A-Z0-9]+$/i.test(line)) || '';
+    }
+
+    function findProduct(lines) {
+      const blacklist = new Set([
+        'Informasi Akun',
+        'Rincian Pembayaran',
+        'Beli Lagi',
+        'Metode Pembayaran',
+        'Nomor Invoice',
+        'Status Pembayaran',
+        'Status Transaksi',
+        'Pesan',
+        'Nickname',
+        'ID',
+        'Server',
+        'Total Pembayaran',
+        'Paid',
+        'Success'
+      ]);
+
+      const timeIndex = lines.findIndex(line => /^\d{1,2}\s+[A-Za-z]{3}\s+\d{4}\s+\d{2}:\d{2}:\d{2}$/.test(line));
+      const infoIndex = lines.findIndex(line => line.toLowerCase() === 'informasi akun');
+
+      if (timeIndex !== -1 && infoIndex !== -1) {
+        const middle = lines.slice(timeIndex + 1, infoIndex).filter(line => !blacklist.has(line));
+        if (middle.length >= 2) {
+          return middle[0];
+        }
+      }
+
+      return '';
+    }
+
+    function findNominal(lines) {
+      const explicit = getValueAfterLabel(lines, 'Nominal');
+      if (explicit) return explicit;
+
+      const infoIndex = lines.findIndex(line => line.toLowerCase() === 'informasi akun');
+      const timeIndex = lines.findIndex(line => /^\d{1,2}\s+[A-Za-z]{3}\s+\d{4}\s+\d{2}:\d{2}:\d{2}$/.test(line));
+
+      if (timeIndex !== -1 && infoIndex !== -1) {
+        const middle = lines.slice(timeIndex + 1, infoIndex);
+        const candidate = middle.find(line =>
+          /diamond|diamonds|robux|uc|cp|token|weekly|monthly|pass|membership|voucher|item/i.test(line)
+        );
+        if (candidate) return candidate;
+      }
+
+      return '';
+    }
+
+    function normalizeStatus(status) {
+      const s = (status || '').trim().toUpperCase();
+      if (!s) return 'SUCCESS';
+      if (s.includes('SUCCESS') || s.includes('SUKSES') || s.includes('SELESAI')) return 'SUCCESS';
+      if (s.includes('PENDING') || s.includes('MENUNGGU')) return 'PENDING';
+      if (s.includes('FAILED') || s.includes('GAGAL')) return 'FAILED';
+      return s;
     }
 
     function setBadge(status) {
       const badge = document.getElementById('statusBadge');
-      const s = (status || 'SUCCESS').toUpperCase();
+      const s = normalizeStatus(status);
 
       badge.textContent = s;
       badge.className = 'pill';
 
-      if (s.includes('SUCCESS') || s.includes('SELESAI') || s.includes('SUKSES')) {
+      if (s === 'SUCCESS') {
         badge.classList.add('pill-success');
-      } else if (s.includes('PENDING') || s.includes('MENUNGGU')) {
+      } else if (s === 'PENDING') {
         badge.classList.add('pill-pending');
       } else {
         badge.classList.add('pill-failed');
@@ -411,139 +531,58 @@ PTO5551325383636D62605164"></textarea>
       updateSN();
     }
 
-    function parseHTMLDocument(html, invoiceCode) {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-
-      const allText = cleanText(doc.body ? doc.body.innerText : '');
-      const lines = (doc.body ? doc.body.innerText : '')
-        .split('\n')
-        .map(v => cleanText(v))
-        .filter(Boolean);
-
-      function nextAfterLabel(label) {
-        const idx = lines.findIndex(v => v.toLowerCase() === label.toLowerCase());
-        if (idx === -1) return '';
-        for (let i = idx + 1; i < lines.length; i++) {
-          const candidate = cleanText(lines[i]);
-          if (!candidate) continue;
-          if (candidate === ':') continue;
-          if (candidate.startsWith(': ')) return candidate.slice(2).trim();
-          if (candidate.startsWith(':')) return candidate.slice(1).trim();
-          return candidate;
-        }
-        return '';
-      }
-
-      function findDateTime() {
-        const m = allText.match(/\b\d{1,2}\s+[A-Za-z]{3}\s+\d{4}\s+\d{2}:\d{2}:\d{2}\b/);
-        return m ? m[0] : '';
-      }
-
-      function findProduct() {
-        const headings = Array.from(doc.querySelectorAll('h1,h2,h3,h4'));
-        for (const h of headings) {
-          const t = cleanText(h.textContent);
-          if (!t) continue;
-          if (/pesanan selesai|progress transaksi|rincian pembayaran|informasi akun|metode pembayaran|nomor invoice|status pembayaran|status transaksi|pesan/i.test(t)) {
-            continue;
-          }
-          return t;
-        }
-        return '';
-      }
-
-      function findNominal() {
-        const candidates = lines.filter(v =>
-          /diamond|diamonds|dm|robux|uc|cp|token|express supply pass|welkin|voucher|membership|weekly|monthly|star rail|genshin/i.test(v)
-        );
-        return candidates[0] || '';
-      }
-
-      function normalizeStatus() {
-        const st = nextAfterLabel('Status Transaksi') || nextAfterLabel('Status Pembayaran') || '';
-        if (!st) {
-          if (/pesanan selesai/i.test(allText)) return 'SUCCESS';
-          return 'SUCCESS';
-        }
-        return st.toUpperCase();
-      }
-
-      const idValue = nextAfterLabel('ID');
-      const serverValue = nextAfterLabel('Server');
-      const userTarget = [idValue, serverValue].filter(Boolean).join(' | ') || idValue || '-';
-
-      return {
-        invoice: invoiceCode || nextAfterLabel('Nomor Invoice') || '-',
-        time: findDateTime() || '-',
-        product: findProduct() || '-',
-        nominal: nextAfterLabel('Nominal') || findNominal() || '-',
-        userTarget,
-        nickname: nextAfterLabel('Nickname') || '-',
-        quantity: (nextAfterLabel('Jumlah') || '1').replace(/\s*x$/i, '').trim() || '1',
-        status: normalizeStatus()
-      };
-    }
-
-    async function fetchFromProxy(invoiceCode) {
-      const targetUrl = `https://www.pojoktopup.id/id-id/invoices/${invoiceCode}`;
-      const proxies = [
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
-        `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`
-      ];
-
-      let lastError = null;
-
-      for (const proxyUrl of proxies) {
-        try {
-          const res = await fetch(proxyUrl);
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-          let html = '';
-          if (proxyUrl.includes('/get?')) {
-            const json = await res.json();
-            html = json.contents || '';
-          } else {
-            html = await res.text();
-          }
-
-          if (!html || html.length < 100) {
-            throw new Error('Konten kosong');
-          }
-
-          return html;
-        } catch (err) {
-          lastError = err;
-        }
-      }
-
-      throw lastError || new Error('Gagal mengambil data');
-    }
-
-    async function fetchInvoice() {
-      const input = document.getElementById('invoiceInput').value;
-      const invoiceCode = extractInvoiceCode(input);
-
-      if (!invoiceCode) {
-        setStatusMessage('error', 'Masukkan link atau nomor invoice dulu.');
-        return;
-      }
-
+    function parsePastedData() {
       try {
-        setStatusMessage('loading', 'Sedang mengambil data invoice...');
-        const html = await fetchFromProxy(invoiceCode);
-        const data = parseHTMLDocument(html, invoiceCode);
+        setStatusMessage('loading', 'Sedang mengambil data dari teks...');
+        const raw = document.getElementById('rawInput').value;
 
-        if (!data.product || data.product === '-') {
-          throw new Error('Data produk tidak terbaca');
+        if (!raw.trim()) {
+          setStatusMessage('error', 'Teks invoice masih kosong.');
+          return;
+        }
+
+        const lines = splitLines(raw);
+
+        const time = findFirstDateLine(lines);
+        const invoice = findInvoice(lines);
+        const product = findProduct(lines);
+        const nominal = findNominal(lines);
+        const nickname = getValueAfterLabel(lines, 'Nickname');
+        const id = getValueAfterLabel(lines, 'ID');
+        const server = getValueAfterLabel(lines, 'Server');
+        const quantityRaw = getValueAfterLabel(lines, 'Jumlah');
+        const status = normalizeStatus(getValueAfterLabel(lines, 'Status Transaksi') || getValueAfterLabel(lines, 'Status Pembayaran'));
+
+        const userTarget = [id, server].filter(Boolean).join(' | ') || '-';
+        const quantity = quantityRaw ? quantityRaw.replace(/\s*x$/i, '').trim() : '1';
+
+        const data = {
+          invoice: invoice || '-',
+          time: time || '-',
+          product: product || '-',
+          nominal: nominal || '-',
+          userTarget,
+          nickname: nickname || '-',
+          quantity: quantity || '1',
+          status: status || 'SUCCESS'
+        };
+
+        if (data.invoice === '-' && data.product === '-' && data.nominal === '-') {
+          setStatusMessage('error', 'Format teks belum terbaca. Pastikan kamu paste isi invoice lengkap.');
+          return;
         }
 
         setInvoiceData(data);
-        setStatusMessage('success', 'Berhasil mengambil data invoice.');
-      } catch (err) {
-        console.error(err);
-        setStatusMessage('error', 'Gagal mengambil data invoice. Kemungkinan proxy/CORS sedang diblokir atau struktur halaman berubah.');
+        setStatusMessage('success', 'Berhasil mengambil data dari teks invoice.');
+      } catch (error) {
+        console.error(error);
+        setStatusMessage('error', 'Gagal membaca data dari teks.');
       }
+    }
+
+    function clearInput() {
+      document.getElementById('rawInput').value = '';
+      setStatusMessage('success', 'Input berhasil dikosongkan.');
     }
 
     async function downloadJPG() {
@@ -559,6 +598,8 @@ PTO5551325383636D62605164"></textarea>
       link.href = canvas.toDataURL('image/jpeg', 0.95);
       link.click();
     }
+
+    parsePastedData();
   </script>
 </body>
 </html>
