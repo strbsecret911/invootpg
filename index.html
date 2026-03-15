@@ -374,6 +374,8 @@ Transaksi berhasil pada 2026/03/11 19:49:44 WIB</textarea>
   </div>
 
   <script>
+    let successTimeForSN = '';
+
     function setStatusMessage(type, text) {
       const box = document.getElementById('fetchStatus');
       box.className = 'status-box';
@@ -430,6 +432,14 @@ Transaksi berhasil pada 2026/03/11 19:49:44 WIB</textarea>
       return lines.find(line => regex.test(line)) || '';
     }
 
+    function findSuccessTime(lines) {
+      const line = lines.find(l => l.includes('Transaksi berhasil pada'));
+      if (!line) return '';
+
+      const match = line.match(/\d{4}\/\d{2}\/\d{2}\s\d{2}:\d{2}:\d{2}/);
+      return match ? match[0] : '';
+    }
+
     function findInvoice(lines) {
       return lines.find(line => /^PTO[A-Z0-9]+$/i.test(line)) || '';
     }
@@ -458,6 +468,9 @@ Transaksi berhasil pada 2026/03/11 19:49:44 WIB</textarea>
       if (timeIndex !== -1 && infoIndex !== -1) {
         const middle = lines.slice(timeIndex + 1, infoIndex).filter(line => !blacklist.has(line));
         if (middle.length >= 2) {
+          return middle[0];
+        }
+        if (middle.length >= 1) {
           return middle[0];
         }
       }
@@ -512,7 +525,7 @@ Transaksi berhasil pada 2026/03/11 19:49:44 WIB</textarea>
       const status = document.getElementById('statusBadge').textContent.trim();
       const nick = document.getElementById('nickname').textContent.trim();
       const invoice = document.getElementById('invoiceNumber').textContent.trim();
-      const time = document.getElementById('transactionTime').textContent.trim();
+      const time = successTimeForSN || document.getElementById('transactionTime').textContent.trim();
 
       const statusText = status === 'SUCCESS' ? 'Sukses' : status;
       document.getElementById('snText').textContent =
@@ -527,6 +540,9 @@ Transaksi berhasil pada 2026/03/11 19:49:44 WIB</textarea>
       document.getElementById('userTarget').textContent = data.userTarget || '-';
       document.getElementById('nickname').textContent = data.nickname || '-';
       document.getElementById('quantity').textContent = data.quantity || '1';
+
+      successTimeForSN = data.successTime || data.time || '';
+
       setBadge(data.status || 'SUCCESS');
       updateSN();
     }
@@ -544,6 +560,7 @@ Transaksi berhasil pada 2026/03/11 19:49:44 WIB</textarea>
         const lines = splitLines(raw);
 
         const time = findFirstDateLine(lines);
+        const successTime = findSuccessTime(lines);
         const invoice = findInvoice(lines);
         const product = findProduct(lines);
         const nominal = findNominal(lines);
@@ -551,7 +568,10 @@ Transaksi berhasil pada 2026/03/11 19:49:44 WIB</textarea>
         const id = getValueAfterLabel(lines, 'ID');
         const server = getValueAfterLabel(lines, 'Server');
         const quantityRaw = getValueAfterLabel(lines, 'Jumlah');
-        const status = normalizeStatus(getValueAfterLabel(lines, 'Status Transaksi') || getValueAfterLabel(lines, 'Status Pembayaran'));
+        const status = normalizeStatus(
+          getValueAfterLabel(lines, 'Status Transaksi') ||
+          getValueAfterLabel(lines, 'Status Pembayaran')
+        );
 
         const userTarget = [id, server].filter(Boolean).join(' | ') || '-';
         const quantity = quantityRaw ? quantityRaw.replace(/\s*x$/i, '').trim() : '1';
@@ -559,6 +579,7 @@ Transaksi berhasil pada 2026/03/11 19:49:44 WIB</textarea>
         const data = {
           invoice: invoice || '-',
           time: time || '-',
+          successTime: successTime || time || '-',
           product: product || '-',
           nominal: nominal || '-',
           userTarget,
@@ -582,6 +603,7 @@ Transaksi berhasil pada 2026/03/11 19:49:44 WIB</textarea>
 
     function clearInput() {
       document.getElementById('rawInput').value = '';
+      successTimeForSN = '';
       setStatusMessage('success', 'Input berhasil dikosongkan.');
     }
 
